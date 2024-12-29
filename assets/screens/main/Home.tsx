@@ -4,40 +4,70 @@ import {
   Text,
   View,
   Image,
+  FlatList,
+  RefreshControl,
+  ActivityIndicator,
   ScrollView,
 } from 'react-native';
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import Basket from '../../svgs/basket.svg';
-import {FlashList} from '@shopify/flash-list';
-import {data2} from '../../mocks/data2';
-import {OnBoarding} from '../../mocks/data';
-import {SvgImage} from '../../components/SvgImage';
+import { SvgImage } from '../../components/SvgImage';
+import { colors } from '../../styles/colors';
+// import { MMKV } from 'react-native-mmkv';
+import { data2 } from '../../mocks/data2';
+import { OnBoarding } from '../../mocks/data';
 
-export const Home = ({navigation}) => {
-  const [press, setPress] = React.useState(false);
-  const renderItem = ({item, index}: {item: any; index: number}) => (
-    <View>
-      <Pressable style={styles.press}>
-        <Text style={styles.category}>{item.title}</Text>
-      </Pressable>
-    </View>
-  );
+// Initialize MMKV storage
+// const storage = new MMKV();
 
-  const rendercard = ({item, index}: {item: any; index: number}) => (
-    <View style={styles.card}>
-      <Pressable style={styles.cardPress}>
+export const Home = ({ navigation }) => {
+  const [favorites, setFavorites] = useState([]);
+  const [selectedCategory, setSelectedCategory] = useState('Breakfast');
+  const [refreshing, setRefreshing] = useState(false);
+
+  // useEffect(() => {
+  //   const savedFavorites = storage.getString('favorites');
+  //   if (savedFavorites) {
+  //     setFavorites(JSON.parse(savedFavorites));
+  //   }
+  // }, []);
+
+  // const toggleHeart = (item) => {
+  //   setFavorites((prevFavorites) => {
+  //     const newFavorites = prevFavorites.some(fav => fav.id === item.id)
+  //       ? prevFavorites.filter(fav => fav.id !== item.id)
+  //       : [...prevFavorites, item];
+  //     storage.set('favorites', JSON.stringify(newFavorites));
+  //     return newFavorites;
+  //   });
+  // };
+
+  const onRefresh = () => {
+    setRefreshing(true);
+    // Burada verileri yeniden yükle veya güncelle
+    setTimeout(() => {
+      setRefreshing(false);
+    }, 2000);
+  };
+
+  const renderCard = ({ item }) => (
+    <View style={styles.card} key={item.id.toString()}>
+      <Pressable
+        style={styles.cardPress}
+        onPress={() => navigation.navigate('Details', { item })}>
         <View style={styles.heartContainer}>
-          <Pressable style={styles.heartPress} onPress={() => setPress(!press)}>
+          <Pressable
+            style={styles.heartPress}
+            onPress={() => toggleHeart(item)}>
             <SvgImage
               source={require('../../svgs/heart.svg')}
               style={styles.heart}
-              color={'white'}
-              fill={press ? 'red' : 'white'}
+              color={favorites.some(fav => fav.id === item.id) ? 'red' : 'white'}
+              fill={favorites.some(fav => fav.id === item.id) ? 'red' : 'white'}
             />
           </Pressable>
         </View>
-        <Image source={{uri: item.url}} style={styles.image} />
-
+        <Image source={{ uri: item.url }} style={styles.image} />
         <Text style={styles.title2}>{item.title}</Text>
         <View style={styles.info}>
           <Text style={styles.kal}>{item.kal}</Text>
@@ -47,49 +77,118 @@ export const Home = ({navigation}) => {
     </View>
   );
 
+  const filteredOnBoarding = OnBoarding.filter(
+    (item) => item.category === selectedCategory
+  );
+
   return (
-    <ScrollView style={styles.container}>
-      <View style={styles.title}>
-        <View>
-          <Text style={styles.morning}>Good morning</Text>
-          <Text style={styles.name}>Alena Sabyan</Text>
-        </View>
-        <Basket />
-      </View>
-      <View>
-        <Text
-          style={[
-            styles.name,
-            {fontSize: 20, fontWeight: 'bold', marginTop: 24},
-          ]}>
-          Categories
-        </Text>
-        <FlashList
-          showsHorizontalScrollIndicator={false}
-          data={data2}
-          horizontal
-          renderItem={renderItem}
-          estimatedItemSize={100}
-          contentContainerStyle={{paddingVertical: 12}} // Use contentContainerStyle here
-        />
-      </View>
-      <View>
-        <Text
-          style={[
-            styles.name,
-            {fontSize: 20, fontWeight: 'bold', marginTop: 24},
-          ]}>
-          Popular Recipes
-        </Text>
-        <FlashList
-          showsHorizontalScrollIndicator={false}
-          data={OnBoarding}
-          horizontal
-          renderItem={rendercard}
-          estimatedItemSize={100}
-        />
-      </View>
-    </ScrollView>
+    <View style={styles.container}>
+      {refreshing ? (
+        <ActivityIndicator size="large" color={colors.primary[300]} style={styles.loadingIndicator} />
+      ) : (
+        <ScrollView
+          refreshControl={
+            <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
+          }
+        >
+          {/* Header */}
+          <View style={styles.title}>
+            <View>
+              <Text style={styles.morning}>Good morning</Text>
+              <Text style={styles.name}>Alena Sabyan</Text>
+            </View>
+            <Basket onPress={() => navigation.navigate('Cart')} />
+          </View>
+
+          {/* Categories Section */}
+          <View style={styles.categorySection}>
+            <Text style={[styles.name, { fontSize: 20, fontWeight: 'bold', marginTop: 24 }]}>
+              Categories
+            </Text>
+            <ScrollView
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              style={styles.categoryList}>
+              {data2.map((item) => {
+                const isSelected = selectedCategory === item.title;
+
+                return (
+                  <Pressable
+                    key={item.id}
+                    onPress={() => {
+                      setSelectedCategory(item.title);
+                    }}
+                    style={[
+                      styles.press,
+                      {
+                        backgroundColor: isSelected
+                          ? colors.primary[300]
+                          : '#F8F8F8',
+                      },
+                    ]}>
+                    <Text
+                      style={[
+                        styles.category,
+                        {
+                          color: isSelected ? 'black' : 'grey',
+                        },
+                      ]}>
+                      {item.title}
+                    </Text>
+                  </Pressable>
+                );
+              })}
+            </ScrollView>
+          </View>
+
+          {/* Recipes Section */}
+          <Text style={[styles.name, { fontSize: 20, fontWeight: 'bold', marginTop: 24 }]}>
+            {selectedCategory} Recipes
+          </Text>
+          <FlatList
+            data={filteredOnBoarding}
+            renderItem={renderCard}
+            keyExtractor={(item) => item.id.toString()}
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            style={styles.recipeList}
+          />
+
+          {/* Popular Recipes Section */}
+          <Text style={[styles.name, { fontSize: 20, fontWeight: 'bold', marginTop: 24 }]}>
+            Popular Recipes
+          </Text>
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.popularSection}>
+            {OnBoarding.map((item) => (
+              <View style={styles.card} key={item.id.toString()}>
+                <Pressable
+                  style={styles.cardPress}
+                  onPress={() => navigation.navigate('Details', { item })}>
+                  <View style={styles.heartContainer}>
+                    <Pressable
+                      style={styles.heartPress}
+                      onPress={() => toggleHeart(item)}>
+                      <SvgImage
+                        source={require('../../svgs/heart.svg')}
+                        style={styles.heart}
+                        color={favorites.some(fav => fav.id === item.id) ? 'red' : 'white'}
+                        fill={favorites.some(fav => fav.id === item.id) ? 'red' : 'white'}
+                      />
+                    </Pressable>
+                  </View>
+                  <Image source={{ uri: item.url }} style={styles.image} />
+                  <Text style={styles.title2}>{item.title}</Text>
+                  <View style={styles.info}>
+                    <Text style={styles.kal}>{item.kal}</Text>
+                    <Text style={styles.date}>{item.time}</Text>
+                  </View>
+                </Pressable>
+              </View>
+            ))}
+          </ScrollView>
+        </ScrollView>
+      )}
+    </View>
   );
 };
 
@@ -106,6 +205,8 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: 'white',
     paddingHorizontal: 20,
+    justifyContent: 'center', // Yükleniyor göstergesini ortalamak için
+    alignItems: 'center',
   },
   title: {
     flexDirection: 'row',
@@ -119,11 +220,13 @@ const styles = StyleSheet.create({
   press: {
     width: 119,
     height: 41,
-    backgroundColor: '#F8F8F8',
     borderRadius: 10,
     justifyContent: 'center',
     alignItems: 'center',
     margin: 10,
+  },
+  categoryList: {
+    paddingVertical: 12,
   },
   image: {
     width: 168,
@@ -135,13 +238,12 @@ const styles = StyleSheet.create({
     height: 280,
     backgroundColor: '#F8F8F8',
     borderRadius: 10,
-
     alignItems: 'center',
+    justifyContent: 'center',
     margin: 10,
   },
   info: {
     flexDirection: 'row',
-
     justifyContent: 'space-between',
   },
   kal: {
@@ -153,6 +255,7 @@ const styles = StyleSheet.create({
     color: 'grey',
   },
   title2: {
+    marginTop: 5,
     fontSize: 16,
     fontWeight: 'bold',
   },
@@ -163,7 +266,6 @@ const styles = StyleSheet.create({
   heart: {
     width: 24,
     height: 24,
-
     alignItems: 'center',
   },
   heartPress: {
@@ -180,5 +282,10 @@ const styles = StyleSheet.create({
     justifyContent: 'flex-end',
     alignItems: 'center',
     width: '100%',
+  },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
 });
