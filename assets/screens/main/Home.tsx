@@ -13,42 +13,40 @@ import React, { useState, useEffect } from 'react';
 import Basket from '../../svgs/basket.svg';
 import { SvgImage } from '../../components/SvgImage';
 import { colors } from '../../styles/colors';
-// import { MMKV } from 'react-native-mmkv';
+ import { MMKV } from 'react-native-mmkv';
 import { data2 } from '../../mocks/data2';
 import { OnBoarding } from '../../mocks/data';
-
-// Initialize MMKV storage
-// const storage = new MMKV();
+ const storage = new MMKV();
 
 export const Home = ({ navigation }) => {
   const [favorites, setFavorites] = useState([]);
   const [selectedCategory, setSelectedCategory] = useState('Breakfast');
   const [refreshing, setRefreshing] = useState(false);
 
-  // useEffect(() => {
-  //   const savedFavorites = storage.getString('favorites');
-  //   if (savedFavorites) {
-  //     setFavorites(JSON.parse(savedFavorites));
-  //   }
-  // }, []);
+   useEffect(() => {
+    const savedFavorites = storage.getString('favorites');
+    if (savedFavorites) {
+      setFavorites(JSON.parse(savedFavorites));
+    }
+   }, []);
 
-  // const toggleHeart = (item) => {
-  //   setFavorites((prevFavorites) => {
-  //     const newFavorites = prevFavorites.some(fav => fav.id === item.id)
-  //       ? prevFavorites.filter(fav => fav.id !== item.id)
-  //       : [...prevFavorites, item];
-  //     storage.set('favorites', JSON.stringify(newFavorites));
-  //     return newFavorites;
-  //   });
-  // };
+   const toggleHeart = (item) => {
+    setFavorites((prevFavorites) => {
+       const newFavorites = prevFavorites.some(fav => fav.id === item.id)
+        ? prevFavorites.filter(fav => fav.id !== item.id)
+         : [...prevFavorites, item];
+       storage.set('favorites', JSON.stringify(newFavorites));
+      return newFavorites;
+     });
+   };
 
-  const onRefresh = () => {
+  function onRefresh() {
     setRefreshing(true);
     // Burada verileri yeniden yükle veya güncelle
     setTimeout(() => {
       setRefreshing(false);
     }, 2000);
-  };
+  }
 
   const renderCard = ({ item }) => (
     <View style={styles.card} key={item.id.toString()}>

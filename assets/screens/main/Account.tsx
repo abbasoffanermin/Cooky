@@ -1,15 +1,48 @@
 import React, { useState, useEffect } from 'react';
-import { ScrollView, StyleSheet, Text, View, Pressable, Image } from 'react-native';
+import { ScrollView, StyleSheet, Text, View, Pressable, Image, RefreshControl } from 'react-native';
 import { SvgImage } from '../../components/SvgImage';
 import { MMKV } from 'react-native-mmkv';
-import { FlashList } from '@shopify/flash-list';
 
-// MMKV Storage-in başlatılması
+// MMKV Storage başlatılması
 const storage = new MMKV();
 
 export const Account = ({ navigation }) => {
+  const [favorites, setFavorites] = useState([]); // useState ile favorites'i tutuyoruz
+  const [refreshing, setRefreshing] = useState(false);
+
+  // MMKV'den favorileri okuyup state'e yüklüyoruz
+  useEffect(() => {
+    const storedFavorites = storage.getString('favorites') ? JSON.parse(storage.getString('favorites')) : [];
+    setFavorites(storedFavorites);
+  }, []);  // Yalnızca sayfa ilk açıldığında çalışır
+
+  // onRefresh handler
+  const onRefresh = () => {
+    setRefreshing(true);
+    setTimeout(() => {
+      setRefreshing(false); // Refresh tamamlandığında refreshing state'ini false yapıyoruz
+    }, 2000);
+  };
+
+  // Favorilere öğe ekleme
+  const addToFavorites = (item) => {
+    const updatedFavorites = [...favorites, item];
+    setFavorites(updatedFavorites);
+    storage.set('favorites', JSON.stringify(updatedFavorites)); // Favorileri MMKV'ye kaydediyoruz
+  };
+
+  // Favorilerden öğe silme
+  const removeFromFavorites = (item) => {
+    const updatedFavorites = favorites.filter(fav => fav.id !== item.id);
+    setFavorites(updatedFavorites);
+    storage.set('favorites', JSON.stringify(updatedFavorites)); // Favorileri MMKV'ye kaydediyoruz
+  };
+
   return (
-    <ScrollView style={styles.container}>
+    <ScrollView
+      refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
+      style={styles.container}
+    >
       {/* Navigation Header */}
       <View style={styles.nav}>
         <Text></Text>
@@ -29,7 +62,74 @@ export const Account = ({ navigation }) => {
         </Pressable>
       </View>
 
-     
+      <View style={styles.container2}>
+        {/* Yatay ScrollView ile satırları düzenle */}
+        <ScrollView nestedScrollEnabled>
+          <View style={styles.row}>
+            {favorites.map((item, index) => {
+              // İki öğe için her seferinde bir satırda yer açmak
+              if (index % 2 === 0) {
+                return (
+                  <View style={styles.rowItem} key={item.id.toString()}>
+                    <View style={styles.cardContainer}>
+                      <Pressable
+                        style={styles.cardPress}
+                        onPress={() => navigation.navigate('Details', { item })}>
+                        <View style={styles.heartContainer}>
+                          <Pressable
+                            style={styles.heartPress}
+                            onPress={() => removeFromFavorites(item)}>
+                            <SvgImage
+                              source={require('../../svgs/heart.svg')}
+                              style={styles.heart}
+                              color={'red'}
+                              fill={'red'}
+                            />
+                          </Pressable>
+                        </View>
+                        <Image source={{ uri: item.url }} style={styles.image} />
+                        <Text style={styles.title2}>{item.title}</Text>
+                        <View style={styles.info}>
+                          <Text style={styles.kal}>{item.kal}</Text>
+                          <Text style={styles.date}>{item.time}</Text>
+                        </View>
+                      </Pressable>
+                    </View>
+                    {/* Eğer sonraki item varsa 2. öğeyi de ekle */}
+                    {favorites[index + 1] && (
+                      <View style={styles.cardContainer}>
+                        <Pressable
+                          style={styles.cardPress}
+                          onPress={() => navigation.navigate('Details', { item: favorites[index + 1] })}>
+                          <View style={styles.heartContainer}>
+                            <Pressable
+                              style={styles.heartPress}
+                              onPress={() => removeFromFavorites(favorites[index + 1])}>
+                              <SvgImage
+                                source={require('../../svgs/heart.svg')}
+                                style={styles.heart}
+                                color={'red'}
+                                fill={'red'}
+                              />
+                            </Pressable>
+                          </View>
+                          <Image source={{ uri: favorites[index + 1].url }} style={styles.image} />
+                          <Text style={styles.title2}>{favorites[index + 1].title}</Text>
+                          <View style={styles.info}>
+                            <Text style={styles.kal}>{favorites[index + 1].kal}</Text>
+                            <Text style={styles.date}>{favorites[index + 1].time}</Text>
+                          </View>
+                        </Pressable>
+                      </View>
+                    )}
+                  </View>
+                );
+              }
+              return null; // Eşleşmeyen öğe için null döndür
+            })}
+          </View>
+        </ScrollView>
+      </View>
     </ScrollView>
   );
 };
@@ -59,12 +159,11 @@ const styles = StyleSheet.create({
   cardPress: {
     backgroundColor: '#F8F8F8',
     borderRadius: 16,
- 
     justifyContent: 'center',
     gap: 10,
     padding: 10,
   },
- 
+
   // Profile Styles
   name: {
     fontSize: 24,
@@ -176,4 +275,13 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     width: '100%',
   },
+  cardContainer: {
+    flexDirection: 'row',
+    justifyContent: 'flex-end',
+    alignItems: 'center',
+    width: 180,
+    gap: 10,
+    height: 300,
+  },
 });
+
